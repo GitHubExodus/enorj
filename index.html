@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spanish Typing Trainer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen text-gray-800">
+  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6 text-center">
+    <h1 class="text-2xl font-bold mb-4 text-blue-600">🇪🇸 Spanish Typing Trainer</h1>
+
+    <div class="mb-4">
+      <button id="start-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Start Practice</button>
+    </div>
+
+    <div id="status" class="text-lg font-semibold mb-3 text-gray-700">Press Start</div>
+    <div id="word-label" class="text-sm text-gray-500 mb-2"></div>
+
+    <input
+      id="answer-input"
+      type="text"
+      placeholder="Type here..."
+      class="border px-3 py-2 rounded w-full text-center text-lg mb-3"
+      disabled
+    />
+
+    <div id="feedback" class="text-md font-medium text-gray-700"></div>
+  </div>
+
+  <script>
+    let words = [];
+    let currentIndex = 0;
+    const input = document.getElementById("answer-input");
+    const feedback = document.getElementById("feedback");
+    const statusEl = document.getElementById("status");
+    const label = document.getElementById("word-label");
+
+    function removeAccents(str) {
+      return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    async function loadWords() {
+      try {
+        const res = await fetch("sentences.txt");
+        const text = await res.text();
+        words = text.split("\n")
+          .map(w => removeAccents(w.trim().toLowerCase()))
+          .filter(Boolean);
+
+        // Shuffle
+        for (let i = words.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [words[i], words[j]] = [words[j], words[i]];
+        }
+        return true;
+      } catch (err) {
+        console.error("Error loading file:", err);
+        statusEl.textContent = "Error loading words.";
+        return false;
+      }
+    }
+
+    function startPractice() {
+      if (words.length === 0) return;
+      currentIndex = 0;
+      input.disabled = false;
+      input.value = "";
+      input.focus();
+      showWord();
+      feedback.textContent = "";
+    }
+
+    function showWord() {
+      label.textContent = `Word ${currentIndex + 1} of ${words.length}`;
+      statusEl.textContent = "Type the correct word:";
+      input.value = "";
+      input.focus();
+    }
+
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") checkAnswer();
+    });
+
+    function checkAnswer() {
+      const userWord = removeAccents(input.value.trim().toLowerCase());
+      const target = words[currentIndex];
+
+      if (userWord === target) {
+        feedback.textContent = "✅ Correct!";
+        currentIndex++;
+        if (currentIndex >= words.length) {
+          statusEl.textContent = "✅ Completed all words!";
+          label.textContent = "";
+          feedback.textContent = "";
+          input.disabled = true;
+        } else {
+          showWord();
+        }
+      } else {
+        feedback.textContent = `❌ Wrong. You typed "${userWord || '(blank)'}". The correct word was "${target}". Restarting at word 1.`;
+        currentIndex = 0;
+        showWord();
+      }
+    }
+
+    document.getElementById("start-btn").addEventListener("click", async () => {
+      const success = await loadWords();
+      if (success) startPractice();
+    });
+  </script>
+</body>
+</html>
